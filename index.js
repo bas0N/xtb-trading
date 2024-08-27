@@ -57,7 +57,7 @@ const triggerPriceDownload = (socket) => {
   const currentTimeStamp = Date.now();
   const pastTimeStamp = currentTimeStamp - 120 * SECOND_IN_MILLISECONDS;
   const object = {
-    command: "getCandles",
+    command: "getChartRangeRequest",
     symbol: "BITCOIN",
     arguments: {
       info: {
