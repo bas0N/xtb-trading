@@ -1,0 +1,18 @@
+{
+  "status": true,
+  "returnData": {
+    "rateInfos": [
+      {
+        "ctm": 1724769960000,
+        "ctmString": "Aug 27, 2024, 4:46:00 PM",
+        "open": 619770.0,
+        "close": 90.0,
+        "high": 90.0,
+        "low": -190.0,
+        "vol": 224.0
+      }
+    ],
+    "digits": 1,
+    "exemode": 1
+  }
+}
