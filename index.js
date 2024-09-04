@@ -2,9 +2,12 @@ const WebSocket = require("ws");
 const fs = require("fs");
 const fileStream = fs.createWriteStream("messages.txt", { flags: "a" });
 
-const PRICES_RETRIEVAL_INTERVAL = 5; // seconds
+const PRICES_RETRIEVAL_INTERVAL = 60; // seconds
+const PING_INTERVAL = 10; // seconds
 const SECOND_IN_MILLISECONDS = 1000;
 const EXECUTE = true;
+
+const PRICE_BUY_TRIGGER = 57400 * 10;
 
 function repeatWithTimeout(callback, interval, socket) {
   function run() {
@@ -43,15 +46,48 @@ const auth = () => {
         PRICES_RETRIEVAL_INTERVAL * SECOND_IN_MILLISECONDS,
         socket
       );
+      repeatWithTimeout(
+        triggerPing,
+        PING_INTERVAL * SECOND_IN_MILLISECONDS,
+        socket
+      );
     } else if (packet.status == false) {
       console.log("error", data);
     } else {
-      console.log("packet", data);
+      console.log(data);
+      const dataParsed = JSON.parse(data);
+      if (dataParsed?.returnData?.order) {
+        console.log("order", dataParsed["returnData"]["order"]);
+      } else if (dataParsed?.returnData?.rateInfos) {
+        const currentPrice = dataParsed["returnData"]["rateInfos"][0]["open"];
+
+        console.log(
+          `current price: ${currentPrice}, priceTrigger: ${PRICE_BUY_TRIGGER}, should buy: ${
+            currentPrice < PRICE_BUY_TRIGGER
+          }`
+        );
+
+        if (
+          dataParsed["returnData"]["rateInfos"][0]["open"] < PRICE_BUY_TRIGGER
+        ) {
+          console.log("BUYING");
+          triggerBuy(socket);
+        }
+      } else {
+        console.log(data);
+      }
     }
   });
 };
 
 auth();
+
+const triggerPing = (socket) => {
+  const object = {
+    command: "ping",
+  };
+  socket.send(JSON.stringify(object));
+};
 
 const triggerPriceDownload = (socket) => {
   const currentTimeStamp = Date.now();
@@ -69,10 +105,34 @@ const triggerPriceDownload = (socket) => {
       },
     },
   };
-  console.log(object);
   socket.send(JSON.stringify(object));
 };
 
+const triggerBuy = (socket) => {
+  const currentDateTimePlusDelay =
+    new Date().getTime() + SECOND_IN_MILLISECONDS * 30;
+
+  socket.send(
+    JSON.stringify({
+      command: "tradeTransaction",
+      arguments: {
+        tradeTransInfo: {
+          cmd: 0,
+          customComment: "Some text",
+          expiration: currentDateTimePlusDelay,
+          offset: 0,
+          order: 0,
+          price: 20,
+          sl: 0.0,
+          symbol: "BITCOIN",
+          tp: 0.0,
+          type: 0,
+          volume: 0.01,
+        },
+      },
+    })
+  );
+};
 // const auth = () => {
 //   const socket = new WebSocket("wss://ws.xtb.com/demo");
 
@@ -102,28 +162,28 @@ const triggerPriceDownload = (socket) => {
 //     );
 //   });
 
-//   setTimeout(() => {
-//     socket.send(
-//       JSON.stringify({
-//         command: "tradeTransaction",
-//         arguments: {
-//           tradeTransInfo: {
-//             cmd: 0,
-//             customComment: "Some text",
-//             expiration: 1724251381000,
-//             offset: 0,
-//             order: 0,
-//             price: 20,
-//             sl: 0.0,
-//             symbol: "BITCOIN",
-//             tp: 0.0,
-//             type: 0,
-//             volume: 0.01,
-//           },
+// setTimeout(() => {
+//   socket.send(
+//     JSON.stringify({
+//       command: "tradeTransaction",
+//       arguments: {
+//         tradeTransInfo: {
+//           cmd: 0,
+//           customComment: "Some text",
+//           expiration: 1724251381000,
+//           offset: 0,
+//           order: 0,
+//           price: 20,
+//           sl: 0.0,
+//           symbol: "BITCOIN",
+//           tp: 0.0,
+//           type: 0,
+//           volume: 0.01,
 //         },
-//       })
-//     );
-//   }, 2000);
+//       },
+//     })
+//   );
+// }, 2000);
 
 //   setTimeout(() => {
 //     console.log("orderNumber", orderNumber);
